@@ -289,20 +289,15 @@ func GetConsumerChainHRP(c common.CommonClient) (string, error) {
 	return hrp, nil
 }
 
-// query a new block to find missed validators index
 func GetBlockResults(c common.CommonClient, height int64) (
-	[]types.BlockEvent,
-	[]types.BlockEvent,
+	/* txs events */ []types.Event,
+	/* block events */ []types.Event,
 	/* unexpected error */ error,
 ) {
-
-	// init context
 	ctx, cancel := context.WithTimeout(context.Background(), common.Timeout)
 	defer cancel()
 
-	// create requester
 	requester := c.RPCClient.R().SetContext(ctx)
-
 	resp, err := requester.Get(types.CosmosBlockResultsQueryPath(height))
 	if err != nil {
 		return nil, nil, errors.Errorf("rpc call is failed from %s: %s", resp.Request.URL, err)
@@ -318,4 +313,29 @@ func GetBlockResults(c common.CommonClient, height int64) (
 	}
 
 	return txsEvents, blockEvents, nil
+}
+
+func GetBlockAndTxs(c common.CommonClient, height int64) error {
+	// init context
+	ctx, cancel := context.WithTimeout(context.Background(), common.Timeout)
+	defer cancel()
+
+	// create requester
+	requester := c.APIClient.R().SetContext(ctx)
+	resp, err := requester.Get(types.CosmosBlockTxsQueryPath(height))
+	if err != nil {
+		return errors.WithStack(err)
+	}
+	if resp.StatusCode() != http.StatusOK {
+		errors.Errorf("stanage status code from %s: [%d]", resp.Request.URL, resp.StatusCode())
+	}
+
+	_, _, ampVote, err := parser.ExtractAmplifierVotes(resp.Body())
+	if err != nil {
+		return errors.WithStack(err)
+	}
+
+	c.Infoln(ampVote)
+	return nil
+
 }

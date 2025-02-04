@@ -157,7 +157,7 @@ func (idx *CheckpointIndexer) batchSync(lastIndexPointerEpoch int64) (
 		}
 
 		// get epoch data
-		resp, err = requester.Get(BlockTxsQueryPath(firstBlockHeightInEpoch))
+		resp, err = requester.Get(types.CosmosBlockTxsQueryPath(firstBlockHeightInEpoch))
 		if err != nil {
 			idx.Errorln(err)
 			return lastIndexPointerEpoch, err

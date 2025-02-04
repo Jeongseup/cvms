@@ -28,3 +28,22 @@ func TestCheckGetBlockResultAndExtractFpVoting(t *testing.T) {
 	}
 
 }
+
+func TestGetBlockAndTxs(t *testing.T) {
+	commonApp := common.NewCommonApp(p)
+	commonApp.SetAPIEndPoint("https://lcd-office.cosmostation.io/axelar-testnet")
+
+	err := GetBlockAndTxs(commonApp.CommonClient, 17293864)
+	assert.NoError(t, err)
+
+	// const msg = "/babylon.finality.v1.MsgAddFinalitySig"
+	// for _, e := range txsEvents {
+	// 	for _, a := range e.Attributes {
+	// 		if a.Value == msg {
+	// 			t.Log(a)
+	// 			t.Log(e)
+	// 		}
+	// 	}
+	// }
+
+}

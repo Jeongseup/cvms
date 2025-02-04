@@ -1,6 +1,7 @@
 package types
 
 import (
+	"encoding/json"
 	"fmt"
 	"time"
 )
@@ -271,30 +272,34 @@ var CosmosBlockResultsQueryPath = func(height int64) string {
 	return fmt.Sprintf("/block_results?height=%d", height)
 }
 
-type CosmosBlockResultResponse struct {
-	JsonRPC string `json:"jsonrpc" validate:"required"`
-	ID      int    `json:"id" validate:"required"`
-	Result  struct {
-		Height     string     `json:"height"`
-		TxsResults []TxResult `json:"txs_results"`
-		// case1)
-		// https://github.com/cometbft/cometbft/blob/v0.37.0/rpc/core/types/responses.go#L54
-		BeginBlockEvents []BlockEvent `json:"begin_block_events"`
-		EndBlockEvents   []BlockEvent `json:"end_block_events"`
-		// case2)
-		// https://github.com/cometbft/cometbft/blob/v0.38.0/rpc/core/types/responses.go#L54
-		FinalizeBlockEvents []BlockEvent `json:"finalize_block_events"`
-		//
-		ValidatorUpdate       interface{}    `json:"-"`
-		ConsensusParamUpdates map[string]any `json:"-"`
-	} `json:"result" validate:"required"`
-}
-type TxResult struct {
-	Code   int64        `json:"code"`
-	Events []BlockEvent `json:"events"`
+type CosmosBlockResultsResponse struct {
+	JsonRPC string       `json:"jsonrpc"`
+	ID      int          `json:"id"`
+	Result  BlockResults `json:"result"`
 }
 
-type BlockEvent struct {
+// assume only for sei
+type CosmosBlockResultsResponseWithoutJSONRPC BlockResults
+
+type BlockResults struct {
+	Height     string     `json:"height"`
+	TxsResults []TxResult `json:"txs_results"`
+	// case1)
+	// https://github.com/cometbft/cometbft/blob/v0.37.0/rpc/core/types/responses.go#L54
+	BeginBlockEvents []Event `json:"begin_block_events"`
+	EndBlockEvents   []Event `json:"end_block_events"`
+	// case2)
+	// https://github.com/cometbft/cometbft/blob/v0.38.0/rpc/core/types/responses.go#L54
+	FinalizeBlockEvents   []Event        `json:"finalize_block_events"`
+	ValidatorUpdate       interface{}    `json:"-"`
+	ConsensusParamUpdates map[string]any `json:"-"`
+}
+type TxResult struct {
+	Code   int64   `json:"code"`
+	Events []Event `json:"events"`
+}
+
+type Event struct {
 	TypeName   string      `json:"type"`
 	Attributes []Attribute `json:"attributes"`
 }
@@ -303,4 +308,32 @@ type Attribute struct {
 	Key   string `json:"key"`
 	Value string `json:"value"`
 	Index bool   `json:"index"`
+}
+
+var CosmosBlockTxsQueryPath = func(blockHeight int64, limits ...int64) string {
+	if len(limits) > 0 {
+		return fmt.Sprintf("/cosmos/tx/v1beta1/txs/block/%d?pagination.limit=%d", blockHeight, limits[0])
+	}
+
+	return fmt.Sprintf("/cosmos/tx/v1beta1/txs/block/%d", blockHeight)
+}
+
+type CosmosTx struct {
+	Body struct {
+		Messages []json.RawMessage `json:"messages"`
+	} `json:"body"`
+	AuthInfo   interface{} `json:"-"`
+	Signatures []string    `json:"-"`
+}
+
+type CosmosBlockTxsResponse struct {
+	Txs   []CosmosTx `json:"txs"`
+	Block struct {
+		Header struct {
+			ChainID         string    `json:"chain_id"`
+			Height          string    `json:"height"`
+			Time            time.Time `json:"time"`
+			ProposerAddress string    `json:"proposer_address"`
+		} `json:"header"`
+	} `json:"block"`
 }

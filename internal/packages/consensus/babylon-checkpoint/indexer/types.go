@@ -16,11 +16,6 @@ var (
 	EpochQueryPath        = func(epochNumber int64) string {
 		return fmt.Sprintf("/babylon/epoching/v1/epochs/%d", epochNumber)
 	}
-
-	// TODO: move into common api
-	BlockTxsQueryPath = func(blockHeight int64) string {
-		return fmt.Sprintf("/cosmos/tx/v1beta1/txs/block/%d?pagination.limit=1", blockHeight)
-	}
 )
 
 type CurrentEpochResponse struct {

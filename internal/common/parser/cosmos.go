@@ -212,8 +212,11 @@ func CosmosSlashingParamsParser(resp []byte) (signedBlocksWindow float64, minSig
 	return signedBlocksWindow, minSignedPerWindow, nil
 }
 
-// this function return two events but one of them will be empty events
-func CosmosBlockResultsParser(resp []byte) (txsEvents []types.BlockEvent, blockEvents []types.BlockEvent, err error) {
+func CosmosBlockResultsParser(resp []byte) (
+	/* txs events */ []types.Event,
+	/* block events */ []types.Event,
+	error,
+) {
 	var preResult map[string]interface{}
 	if err := json.Unmarshal(resp, &preResult); err != nil {
 		return nil, nil, err
@@ -221,41 +224,54 @@ func CosmosBlockResultsParser(resp []byte) (txsEvents []types.BlockEvent, blockE
 
 	_, ok := preResult["jsonrpc"].(string)
 	if ok {
-		var result types.CosmosBlockResultResponse
+		var result types.CosmosBlockResultsResponse
 		if err := json.Unmarshal(resp, &result); err != nil {
 			return nil, nil, err
 		}
 
-		txsEvents := make([]types.BlockEvent, 0)
-		for _, txResult := range result.Result.TxsResults {
-			txsEvents = append(txsEvents, txResult.Events...)
+		txsEvents := eventListDecoder(collectTxsEvents(result.Result.TxsResults))
+		beginBlockEvents := eventListDecoder(result.Result.BeginBlockEvents)
+		endBlockEvents := eventListDecoder(result.Result.EndBlockEvents)
+		finalizeBlockEvents := eventListDecoder(result.Result.FinalizeBlockEvents)
+
+		// Concatenate block events
+		blockEvents := append(append(beginBlockEvents, endBlockEvents...), finalizeBlockEvents...)
+
+		return txsEvents, blockEvents, nil
+	} else {
+		var result types.CosmosBlockResultsResponseWithoutJSONRPC
+		if err := json.Unmarshal(resp, &result); err != nil {
+			return nil, nil, err
 		}
 
-		blockEvents := make([]types.BlockEvent, 0)
-		blockEvents = append(blockEvents, result.Result.BeginBlockEvents...)
-		blockEvents = append(blockEvents, result.Result.EndBlockEvents...)
-		blockEvents = append(blockEvents, result.Result.FinalizeBlockEvents...)
+		txsEvents := eventListDecoder(collectTxsEvents(result.TxsResults))
+		beginBlockEvents := eventListDecoder(result.BeginBlockEvents)
+		endBlockEvents := eventListDecoder(result.EndBlockEvents)
+		finalizeBlockEvents := eventListDecoder(result.FinalizeBlockEvents)
 
-		decodedTxsEvents, decodedBlockEvents := DecodeEventsInBlockResults(txsEvents, blockEvents)
-		return decodedTxsEvents, decodedBlockEvents, nil
+		// Concatenate block events
+		blockEvents := append(append(beginBlockEvents, endBlockEvents...), finalizeBlockEvents...)
+
+		return txsEvents, blockEvents, nil
 	}
-
-	return nil, nil, errors.New("unexpected response data in block results")
 }
 
-func DecodeEventsInBlockResults(txsEvents []types.BlockEvent, blockEvents []types.BlockEvent) ([]types.BlockEvent, []types.BlockEvent) {
-	for i, event := range txsEvents {
-		txsEvents[i].Attributes = DecodeAttributes(event.Attributes)
+func collectTxsEvents(txs []types.TxResult) []types.Event {
+	txEvents := make([]types.Event, 0)
+	for _, tx := range txs {
+		txEvents = append(txEvents, tx.Events...)
 	}
-
-	for i, event := range blockEvents {
-		blockEvents[i].Attributes = DecodeAttributes(event.Attributes)
-	}
-
-	return txsEvents, blockEvents
+	return txEvents
 }
 
-func DecodeAttributes(attributes []types.Attribute) []types.Attribute {
+func eventListDecoder(eventList []types.Event) []types.Event {
+	for idx, event := range eventList {
+		eventList[idx].Attributes = decodeAttributes(event.Attributes)
+	}
+	return eventList
+}
+
+func decodeAttributes(attributes []types.Attribute) []types.Attribute {
 	for i, attr := range attributes {
 		// Decode both key and value if possible
 		attributes[i].Key = decodeBase64IfPossible(attr.Key)

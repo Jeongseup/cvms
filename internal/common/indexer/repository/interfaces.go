@@ -8,6 +8,7 @@ type IMetaRepository interface {
 	IIndexPointerRepository
 	IValidatorInfoRepository
 	IFinalityProviderInfoRepository
+	IVerifierInfoRepository
 
 	// common sql interface for partition tables
 	CreatePartitionTable(IndexName, chainID string) error
@@ -41,4 +42,12 @@ type IFinalityProviderInfoRepository interface {
 	GetFinalityProviderInfoListByChainInfoID(chainInfoID int64) (fpInfoList []model.FinalityProviderInfo, err error)
 	InsertFinalityProviderInfoList([]model.FinalityProviderInfo) error
 	GetFinalityProviderInfoListByMonikers(chainInfoID int64, monikers []string) ([]model.FinalityProviderInfo, error)
+}
+
+// interface for about meta.verifier_info table
+type IVerifierInfoRepository interface {
+	CreateVerifierInfoPartitionTableByChainID(chainID string) error
+	GetVerifierInfoListByChainInfoID(chainInfoID int64) (verifierInfoList []model.VerifierInfo, err error)
+	InsertVerifierInfoList(verifierInfoList []model.VerifierInfo) error
+	GetVerifierInfoListByMonikers(chainInfoID int64, monikers []string) ([]model.VerifierInfo, error)
 }
