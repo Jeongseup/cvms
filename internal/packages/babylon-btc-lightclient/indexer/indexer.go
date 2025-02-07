@@ -35,6 +35,10 @@ func NewBTCLightClientIndexer(p common.Packager) (*BTCLightClientIndexer, error)
 	return &BTCLightClientIndexer{indexer, repo, status.EarliestBlockHeight}, nil
 }
 
+// NOTE: Babylon operates a Bitcoin light client that stores Bitcoin chain headers.
+// The light client is maintained up to date by the Vigilante (more specifically, the Vigilante Reporter), which tracks BTC state and submits the latest BTC headers to Babylon.
+// Ensuring that the BTC light client is up to date and can recover from Bitcoin re-orgs is very important for both the BTC Staking and the BTC Timestamping protocols.
+// The CVMS tool will index the Babylon node events BTCRollForward and BTCRollBack
 func (idx *BTCLightClientIndexer) Start() error {
 	err := idx.InitChainInfoID()
 	if err != nil {
