@@ -41,10 +41,10 @@ func (v AxelarAmplifierVerifierVote) String() string {
 type VerifierVoteStatus int64
 
 var (
-	PollStart        VerifierVoteStatus = 1
-	FailedOnChain    VerifierVoteStatus = 2
-	NotFound         VerifierVoteStatus = 3
-	SucceededOnChain VerifierVoteStatus = 4
+	PollStart        VerifierVoteStatus = 0
+	FailedOnChain    VerifierVoteStatus = 1
+	NotFound         VerifierVoteStatus = 2
+	SucceededOnChain VerifierVoteStatus = 3
 )
 
 func StringToPollVote(str string) VerifierVoteStatus {
@@ -57,4 +57,16 @@ func StringToPollVote(str string) VerifierVoteStatus {
 		return SucceededOnChain
 	}
 	return PollStart
+}
+
+func (v VerifierVoteStatus) ToString() string {
+	switch v {
+	case FailedOnChain:
+		return "failed_on_chain"
+	case NotFound:
+		return "not_found"
+	case SucceededOnChain:
+		return "succeeded_on_chain"
+	}
+	return "did_not_vote"
 }

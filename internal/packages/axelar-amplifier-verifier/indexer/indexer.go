@@ -22,7 +22,6 @@ var (
 type AxelarAmplifierVerifierIndexer struct {
 	*common.Indexer
 	repository.AmplifierIndexerRepository
-	earliestBlockHeight int64
 }
 
 func NewAxelarAmplifierVerifierIndexer(p common.Packager) (*AxelarAmplifierVerifierIndexer, error) {
@@ -33,7 +32,7 @@ func NewAxelarAmplifierVerifierIndexer(p common.Packager) (*AxelarAmplifierVerif
 	indexer := common.NewIndexer(p, p.Package, status.ChainID)
 	repo := repository.NewRepository(*p.IndexerDB, subsystem, indexertypes.SQLQueryMaxDuration)
 	indexer.Lh = indexertypes.LatestHeightCache{LatestHeight: status.BlockHeight}
-	return &AxelarAmplifierVerifierIndexer{indexer, repo, status.EarliestBlockHeight}, nil
+	return &AxelarAmplifierVerifierIndexer{indexer, repo}, nil
 }
 
 func (idx *AxelarAmplifierVerifierIndexer) Start() error {
@@ -47,9 +46,8 @@ func (idx *AxelarAmplifierVerifierIndexer) Start() error {
 		return errors.Wrap(err, "failed to check init tables")
 	}
 	if !alreadyInit {
-		idx.Warnln("it's not initialized in the database, so that veindexer will init for this package")
-		// TODO:
-		idx.InitPartitionTablesByChainInfoID(idx.IndexName, idx.ChainID, idx.earliestBlockHeight)
+		idx.Warnf("it's not initialized in the database, so that this package will be init at %d", idx.Lh.LatestHeight)
+		idx.InitPartitionTablesByChainInfoID(idx.IndexName, idx.ChainID, idx.Lh.LatestHeight)
 		idx.CreateVerifierInfoPartitionTableByChainID(idx.ChainID)
 	}
 
@@ -64,7 +62,7 @@ func (idx *AxelarAmplifierVerifierIndexer) Start() error {
 		return errors.Wrap(err, "failed to fetch validator_info list")
 	}
 
-	idx.Infof("loaded index pointer: %d, loaded vim length: %d", initIndexPointer.Pointer, len(idx.Vim))
+	idx.Infof("loaded index pointer: %d, loaded vim length: %d VAM: %d", initIndexPointer.Pointer, len(idx.Vim), len(idx.VAM))
 
 	// init indexer metrics
 	idx.initLabelsAndMetrics()
@@ -171,18 +169,14 @@ func (idx *AxelarAmplifierVerifierIndexer) InitChainInfoID() error {
 	return nil
 }
 
-// TODO: change FetchValidatorInfoList to FetchVerifier...
-func (indexer *AxelarAmplifierVerifierIndexer) FetchValidatorInfoList() error {
-	// get already saved validator-set list for mapping validators ids
-	verifierInfoList, err := indexer.GetVerifierInfoListByChainInfoID(indexer.ChainInfoID)
+func (idx *AxelarAmplifierVerifierIndexer) FetchValidatorInfoList() error {
+	verifierInfoList, err := idx.GetVerifierInfoListByChainInfoID(idx.ChainInfoID)
 	if err != nil {
 		return errors.Wrap(err, "failed to get validator info list")
 	}
-
-	// when the this pacakge starts, set validator-id map
 	for _, verifier := range verifierInfoList {
-		indexer.Vim[verifier.VerifierAddress] = int64(verifier.ID)
+		idx.Vim[verifier.VerifierAddress] = verifier.ID
+		idx.VAM[verifier.ID] = verifier.VerifierAddress
 	}
-
 	return nil
 }

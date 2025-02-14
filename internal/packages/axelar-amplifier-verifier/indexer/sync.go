@@ -12,25 +12,28 @@ import (
 	"github.com/pkg/errors"
 )
 
+const blockExpiry = 10
+
 func (idx *AxelarAmplifierVerifierIndexer) batchSync(lastIndexPoint int64) (
 	/* new index pointer */ int64,
 	/* error */ error,
 ) {
-	if lastIndexPoint >= idx.Lh.LatestHeight {
-		idx.Infof("current height is %d and latest height is %d both of them are same, so it'll skip the logic", lastIndexPoint, idx.Lh.LatestHeight)
+	// set starntHeight and endHeight for batch sync
+	// NOTE: end height will use latest height - 10 for block expiry height
+	startHeight := (lastIndexPoint + 1)
+	endHeight := (idx.Lh.LatestHeight - blockExpiry)
+	if startHeight > endHeight {
+		idx.Infof("no need to sync from %d height to %d height, so it'll skip the logic", startHeight, endHeight)
 		return lastIndexPoint, nil
 	}
 
-	// set starntHeight and endHeight for batch sync
-	startHeight := (lastIndexPoint + 1)
-	endHeight := idx.Lh.LatestHeight
-
 	// set limit at end-height in this batch sync logic
-	if (idx.Lh.LatestHeight - startHeight) > indexertypes.BatchSyncLimit {
+	if (endHeight - startHeight) > indexertypes.BatchSyncLimit {
 		endHeight = startHeight + indexertypes.BatchSyncLimit
-		idx.Debugf("by batch sync limit, end height will change to %d", endHeight)
+		idx.Infof("by batch sync limit, end height will change to %d", endHeight)
 	}
 
+	// get contract info
 	chainNameMap, err := GetVerifierContractAddressMap(idx.CommonClient, false)
 	if err != nil {
 		return lastIndexPoint, errors.Wrap(err, "failed get verifier register contract address")
@@ -39,7 +42,6 @@ func (idx *AxelarAmplifierVerifierIndexer) batchSync(lastIndexPoint int64) (
 	// init channel and waitgroup for go-routine
 	ch := make(chan helper.Result)
 	wg := sync.WaitGroup{}
-
 	summary := make(map[int64]PollDataSummary)
 
 	// start to call block results
@@ -160,9 +162,10 @@ func (idx *AxelarAmplifierVerifierIndexer) batchSync(lastIndexPoint int64) (
 
 		for _, v := range verifierInfoList {
 			idx.Vim[v.VerifierAddress] = int64(v.ID)
+			idx.VAM[v.ID] = v.VerifierAddress
 		}
 
-		idx.Debugf("changed vim length: %d", len(idx.Vim))
+		idx.Debugf("changed vim length: %d and VAM: %d", len(idx.Vim), len(idx.VAM))
 	}
 
 	// first key: contract address
@@ -237,7 +240,7 @@ func (idx *AxelarAmplifierVerifierIndexer) batchSync(lastIndexPoint int64) (
 		return lastIndexPoint, errors.Wrap(err, "faeild to insert models")
 	}
 
-	idx.updatePrometheusMetrics(endHeight)
+	idx.updatePrometheusMetrics(endHeight, pollMap)
 	return endHeight, nil
 }
 
@@ -287,6 +290,7 @@ func (idx *AxelarAmplifierVerifierIndexer) MustInitPoll(chainAndPollID, contract
 
 		for _, v := range verifierInfoList {
 			idx.Vim[v.VerifierAddress] = int64(v.ID)
+			idx.VAM[v.ID] = v.VerifierAddress
 		}
 	}
 
