@@ -179,6 +179,7 @@ bbn-test-5:
     - voteindexer
     - babylon_checkpoint
     - babylon-btc-lightclient
+    - babylon_covenant_signature
     - finality-provider-indexer
     - finality-provider-uptime
 bitcanna-1:
