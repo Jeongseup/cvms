@@ -19,8 +19,8 @@ var (
 )
 
 const (
-	SubsystemSleep = 10 * time.Second
-	UnHealthSleep  = 10 * time.Second
+	SubsystemSleep = 60 * time.Second
+	UnHealthSleep  = 60 * time.Second
 
 	TotalDelegationsMetricName = "total"
 )
