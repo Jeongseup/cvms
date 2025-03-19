@@ -13,6 +13,7 @@ var (
 		// CometBFT
 		"voteindexer",
 		"veindexer",
+		"block-data-analytics",
 
 		// Babylon
 		"babylon-checkpoint",
