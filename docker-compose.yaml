@@ -188,8 +188,6 @@ services:
       - ${DOCKER_ROOT:-/var/lib/docker}/containers:/var/lib/docker/containers:ro,rslave
     command:
       - '--config.file=/etc/promtail/promtail-config.yaml'
-    environment:
-      SERVER_LABEL_HOSTNAME: cvms
     restart: 'unless-stopped'
     networks: ['cvms-net']
     depends_on: ['loki']
