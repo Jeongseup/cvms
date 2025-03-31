@@ -194,12 +194,6 @@ services:
     networks: ['cvms-net']
     depends_on: ['loki']
     <<: *logging
-    labels:
-      - metrics.scrape=true
-      - metrics.path=/metrics
-      - metrics.port=9080
-      - metrics.instance=promtail
-      # - metrics.network=${NETWORK}
 
   loki:
     container_name: cvms-loki
@@ -212,12 +206,7 @@ services:
     restart: 'unless-stopped'
     networks: ['cvms-net']
     <<: *logging
-    labels:
-      - metrics.scrape=true
-      - metrics.path=/metrics
-      - metrics.port=3100
-      - metrics.instance=loki
-      # - metrics.network=${NETWORK}
+
   cadvisor:
     container_name: cvms-cadvisor
     restart: 'unless-stopped'
@@ -233,12 +222,6 @@ services:
       - --housekeeping_interval=30s
     networks: ['cvms-net']
     <<: *logging
-    labels:
-      - metrics.scrape=true
-      - metrics.path=/metrics
-      - metrics.port=8080
-      - metrics.instance=cadvisor
-      # - metrics.network=${NETWORK}
 
 networks:
   cvms-net:

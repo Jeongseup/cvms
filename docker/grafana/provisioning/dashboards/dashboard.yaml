@@ -27,3 +27,11 @@ providers:
     editable: true
     options:
       path: /etc/grafana/provisioning/dashboards/cvms-management-dashboard.json
+
+  - name: 'CVMS cadvisor'
+    orgId: 1
+    type: file
+    disableDeletion: false
+    editable: true
+    options:
+      path: /etc/grafana/provisioning/dashboards/cvms-cadvisor-dashboard.json.json

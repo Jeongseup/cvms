@@ -43,3 +43,13 @@ scrape_configs:
     metrics_path: '/metrics'
     static_configs:
       - targets: ['cvms-cadvisor:8080']      
+
+  - job_name: 'loki'
+    metrics_path: '/metrics'
+    static_configs:
+      - targets: ['loki:3100']      
+
+  - job_name: 'promtail'
+    metrics_path: '/metrics'
+    static_configs:
+      - targets: ['promtail:9080']      
