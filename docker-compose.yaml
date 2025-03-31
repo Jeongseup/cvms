@@ -178,6 +178,7 @@ services:
       - ${ALERTMANAGER_SERVER_PORT:-9093}:9093
 
   promtail:
+    container_name: cvms-promtail
     image: grafana/promtail:latest
     user: root
     volumes:
@@ -186,13 +187,12 @@ services:
       - promtail-volume:/tmp
       - ${DOCKER_ROOT:-/var/lib/docker}/containers:/var/lib/docker/containers:ro,rslave
     command:
-      - '/usr/bin/promtail'
-      - '--config.file=/promtail-config.yml'
+      - '--config.file=/etc/promtail/promtail-config.yaml'
     environment:
       SERVER_LABEL_HOSTNAME: cvms
     restart: 'unless-stopped'
-    depends_on:
-      - loki
+    networks: ['cvms-net']
+    depends_on: ['loki']
     <<: *logging
     labels:
       - metrics.scrape=true
@@ -202,19 +202,42 @@ services:
       # - metrics.network=${NETWORK}
 
   loki:
+    container_name: cvms-loki
     image: grafana/loki:latest
     volumes:
       - loki-volume:/tmp
       - ./docker/loki:/etc/loki
     command:
-      - '--config.file=/etc/loki/loki.yml'
+      - '--config.file=/etc/loki/loki.yaml'
     restart: 'unless-stopped'
+    networks: ['cvms-net']
     <<: *logging
     labels:
       - metrics.scrape=true
       - metrics.path=/metrics
       - metrics.port=3100
       - metrics.instance=loki
+      # - metrics.network=${NETWORK}
+  cadvisor:
+    container_name: cvms-cadvisor
+    restart: 'unless-stopped'
+    image: gcr.io/cadvisor/cadvisor:v0.49.1
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - /:/rootfs:ro,rslave
+      - /var/run:/var/run
+      - /sys:/sys:ro,rslave
+      - ${DOCKER_ROOT:-/var/lib/docker}:/var/lib/docker:ro,rslave
+    command:
+      - --docker_only
+      - --housekeeping_interval=30s
+    networks: ['cvms-net']
+    <<: *logging
+    labels:
+      - metrics.scrape=true
+      - metrics.path=/metrics
+      - metrics.port=8080
+      - metrics.instance=cadvisor
       # - metrics.network=${NETWORK}
 
 networks:

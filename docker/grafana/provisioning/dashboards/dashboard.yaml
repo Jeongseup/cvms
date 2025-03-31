@@ -19,3 +19,11 @@ providers:
     editable: true
     options:
       path: /etc/grafana/provisioning/dashboards/network
+
+  - name: 'CVMS Logs'
+    orgId: 1
+    type: file
+    disableDeletion: false
+    editable: true
+    options:
+      path: /etc/grafana/provisioning/dashboards/cvms-management-dashboard.json
