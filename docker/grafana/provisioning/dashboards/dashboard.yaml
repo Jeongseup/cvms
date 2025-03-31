@@ -34,4 +34,4 @@ providers:
     disableDeletion: false
     editable: true
     options:
-      path: /etc/grafana/provisioning/dashboards/cvms-cadvisor-dashboard.json.json
+      path: /etc/grafana/provisioning/dashboards/cvms-cadvisor-dashboard.json
