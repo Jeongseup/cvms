@@ -1,0 +1,29 @@
+name: Chain Package Test
+
+on:
+  workflow_dispatch:
+    inputs:
+      chain_id:
+        description: 'Chain ID to test'
+        required: true
+        type: string
+
+jobs:
+  test-chain-packages:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Set up Go
+        uses: actions/setup-go@v4
+        with:
+          go-version: '1.21'
+
+      - name: Show selected chain
+        run: "echo \"Selected chain_id: ${{ inputs.chain_id }}\""
+
+      # - name: Run tests for packages defined in support_chains.yaml
+      #   run: |
+      #     echo "Testing packages for chain_id: ${{ inputs.chain_id }}"
+      #     python scripts/test_chain_packages.py ${{ inputs.chain_id }}
