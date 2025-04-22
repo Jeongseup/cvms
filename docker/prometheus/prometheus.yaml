@@ -53,3 +53,9 @@ scrape_configs:
     metrics_path: '/metrics'
     static_configs:
       - targets: ['promtail:9080']      
+
+  - job_name: 'external_service'
+    file_sd_configs:
+      - files:
+          - './targets/*.yml'
+          - './targets/*.yaml'

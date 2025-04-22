@@ -22,6 +22,7 @@ custom-prometheus.yaml
 **/custom_rules/
 custom-alertmanager.yaml
 custom_chains.yaml
+postgres_exporter.yaml
 
 # IDEA editor
 .idea
