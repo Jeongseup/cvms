@@ -46,14 +46,16 @@ formatters:
 
 linters:
   enable:
+    # custom
+    # - copyloopvar # detects places where loop variables are copied (Go 1.22+)
+    # - cyclop # checks function and package cyclomatic complexity
+    # - depguard # checks if package imports are in a list of acceptable packages
+
     - asasalint # checks for pass []any as any in variadic func(...any)
     - asciicheck # checks that your code does not contain non-ASCII identifiers
     - bidichk # checks for dangerous unicode character sequences
     - bodyclose # checks whether HTTP response body is closed successfully
     - canonicalheader # checks whether net/http.Header uses canonical header
-    - copyloopvar # detects places where loop variables are copied (Go 1.22+)
-    - cyclop # checks function and package cyclomatic complexity
-    - depguard # checks if package imports are in a list of acceptable packages
     - dupl # tool for code clone detection
     - durationcheck # checks for two durations multiplied together
     - errcheck # checking for unchecked errors, these unchecked errors can be critical bugs in some cases
