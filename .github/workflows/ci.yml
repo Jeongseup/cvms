@@ -4,13 +4,14 @@ name: CVMS CI
 on:
   push: # On every push to any branch
     branches:
-      - main # Or your fork's default branch name, e.g., develop, master
+      - develop # Or your fork's default branch name, e.g., develop, master
       - "feature/**" # This will match 'feature/golangci-lint' and other feature branches
-
+    tags:
+      - "v*.*.*" # For release tagging later
   # TODO: Uncomment the following lines to run on pull requests now
   # pull_request: # On every pull request targeting the main branch
   #   branches:
-  #     - main
+  #     - develop
 
 jobs:
   # This job will lint, test, and build your Go code
@@ -60,3 +61,67 @@ jobs:
         run:
           go build -v ./... # Or specify your main package, e.g., go build -v ./cmd/cvms
           # If your main.go is in the root, `go build -v .` is fine.
+  build-and-push-docker-image:
+    name: Build and Push Docker Image
+    runs-on: ubuntu-latest
+    needs: build-and-test # Ensures this job runs only if build-and-test succeeds
+
+    # This job will only run for pushes (not PRs) to 'develop', 'feature/golang-ci', or tags.
+    if: |
+      github.event_name == 'push' &&
+      (
+        github.ref == 'refs/heads/develop' ||
+        github.ref == 'refs/heads/feature/golang-ci' ||
+        startsWith(github.ref, 'refs/tags/v')
+      )
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        # If you use git tags for versioning in Docker tags, fetch all history/tags
+        # with:
+        #   fetch-depth: 0
+
+      - name: Extract Docker metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: |
+            ghcr.io/${{ github.repository_owner }}/cvms
+            # This will create image names like ghcr.io/your-username/cvms
+            # If github.repository_owner is 'cosmostation' and repo name should always be 'cvms'
+          tags: |
+            # Creates a tag like 'develop' for the develop branch
+            # Creates a tag like 'feature-golang-ci' for the feature/golang-ci branch
+            type=ref,event=branch 
+            # Creates a tag like 'v1.0.0' for git tags like v1.0.0
+            type=ref,event=tag
+            # Creates a tag with the short commit SHA, e.g., a1b2c3d
+            type=sha,prefix=,suffix=,format=short
+            # Optional: For the 'develop' branch, you might also want a 'latest' tag
+            # type=raw,value=latest,enable=${{ github.ref == 'refs/heads/develop' }}
+
+      - name: Set up QEMU (for multi-platform builds, optional)
+        uses: docker/setup-qemu-action@v3
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Login to GitHub Container Registry (GHCR)
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }} # Your GitHub username or organization name
+          password: ${{ secrets.GITHUB_TOKEN }} # GitHub Actions automatically provides this token
+
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: . # Your Dockerfile should be in the root of your repository
+          file: ./Dockerfile # Path to your Dockerfile
+          # platforms: linux/amd64,linux/arm64 # Uncomment for multi-platform builds
+          push: true # This will push the image since the 'if' condition for the job was met
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha # Use GitHub Actions cache for Docker layers
+          cache-to: type=gha,mode=max
