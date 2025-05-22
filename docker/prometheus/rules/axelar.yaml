@@ -12,7 +12,7 @@ groups:
   - name: AxelarAmplifierVerifierPackage
     rules:
       - alert: AmplifierVerifierFailedVoting
-        expr: cvms_axelar_amplifier_verifier_poll_vote{chain_id='axelar-dojo-1',status!~"SucceededOnChain"} - (cvms_axelar_amplifier_verifier_poll_vote offset 10m) > 0
+        expr: cvms_axelar_amplifier_verifier_poll_vote{status!~"SucceededOnChain"} - (cvms_axelar_amplifier_verifier_poll_vote offset 10m) > 0
         labels:
           severity: warning
         annotations:
@@ -24,7 +24,8 @@ groups:
   - name: AxelarValdHeartbeatsPackage
     rules:
       - alert: AxelarValdHeartbeatsStopped
-        expr: group by (chain_id, broadcastor_address, moniker, validator_operator_address, mainnet) (increase(cvms_axelar_vald_heartbeats_count_total{status="missed"}[15m])) > 2
+        expr: increase(cvms_axelar_vald_heartbeats_count_total{status="success"}[5m]) == 0
+        for: 10m
         labels:
           severity: warning
         annotations:
