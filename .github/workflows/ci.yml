@@ -1,0 +1,62 @@
+name: CVMS CI
+
+# When this workflow is triggered
+on:
+  push: # On every push to any branch
+    branches:
+      - main # Or your fork's default branch name, e.g., develop, master
+      - "feature/**" # This will match 'feature/golangci-lint' and other feature branches
+
+  # TODO: Uncomment the following lines to run on pull requests now
+  # pull_request: # On every pull request targeting the main branch
+  #   branches:
+  #     - main
+
+jobs:
+  # This job will lint, test, and build your Go code
+  build-and-test:
+    name: Build and Test
+    runs-on: ubuntu-latest # Use the latest Ubuntu runner provided by GitHub
+
+    steps:
+      # Step 1: Check out your code
+      # This action checks-out your repository under $GITHUB_WORKSPACE, so your workflow can access it.
+      - name: Checkout code
+        uses: actions/checkout@v4 # Use the official checkout action
+
+      # Step 2: Set up Go environment
+      # This action sets up a Go environment for use in actions.
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: "1.23" # Specify your Go version. Check your go.mod for this.
+          cache: true # Enable caching of Go modules to speed up subsequent runs
+
+      # Step 3: Install golangci-lint (if you use it)
+      # golangci-lint is a popular Go linters aggregator.
+      # It's good practice to run this before tests.
+      - name: Run golangci-lint
+        uses: golangci/golangci-lint-action@v6
+        with:
+          # Optional: version of golangci-lint to use in form of v1.2.3 or `latest` to use the latest version
+          version: v1.57 # Or your preferred version
+          # Optional: working directory, useful for monorepos
+          # working-directory: cmd/cvms # If your main package is in a subdirectory
+          args: --timeout=5m # Example: Add a timeout
+
+      # TODO: Ignore this step for now
+      # Step 4: Run Go Tests
+      # This command runs all tests in your project.
+      # The -v flag gives verbose output.
+      # ./... means run tests in all subdirectories.
+      # - name: Run Go Tests
+      #   run: go test -v ./...
+
+      # Step 5: Build the Go application
+      # This ensures your application compiles correctly.
+      # You might want to specify the output binary name if needed,
+      # but for CI, just ensuring it builds is often enough.
+      - name: Build Go Application
+        run:
+          go build -v ./... # Or specify your main package, e.g., go build -v ./cmd/cvms
+          # If your main.go is in the root, `go build -v .` is fine.
