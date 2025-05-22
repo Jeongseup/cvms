@@ -36,10 +36,10 @@ jobs:
       # golangci-lint is a popular Go linters aggregator.
       # It's good practice to run this before tests.
       - name: Run golangci-lint
-        uses: golangci/golangci-lint-action@v6
+        uses: golangci/golangci-lint-action@v8
         with:
           # Optional: version of golangci-lint to use in form of v1.2.3 or `latest` to use the latest version
-          version: v1.57 # Or your preferred version
+          version: v2.1.5 # Or your preferred version
           # Optional: working directory, useful for monorepos
           # working-directory: cmd/cvms # If your main package is in a subdirectory
           args: --timeout=5m # Example: Add a timeout
