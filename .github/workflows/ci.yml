@@ -5,73 +5,54 @@ on:
   push: # On every push to any branch
     branches:
       - develop # Or your fork's default branch name, e.g., develop, master
+      - release
       - "feature/**" # This will match 'feature/golangci-lint' and other feature branches
     tags:
       - "v*.*.*" # For release tagging later
-  # TODO: Uncomment the following lines to run on pull requests now
-  # pull_request: # On every pull request targeting the main branch
-  #   branches:
-  #     - develop
+  pull_request: # On every pull request targeting the main branch
+    branches:
+      - develop
 
 jobs:
-  # This job will lint, test, and build your Go code
   build-and-test:
     name: Build and Test
     runs-on: ubuntu-latest # Use the latest Ubuntu runner provided by GitHub
 
     steps:
-      # Step 1: Check out your code
-      # This action checks-out your repository under $GITHUB_WORKSPACE, so your workflow can access it.
       - name: Checkout code
-        uses: actions/checkout@v4 # Use the official checkout action
+        uses: actions/checkout@v4
 
-      # Step 2: Set up Go environment
-      # This action sets up a Go environment for use in actions.
       - name: Setup Go
         uses: actions/setup-go@v5
         with:
           go-version: "1.23" # Specify your Go version. Check your go.mod for this.
           cache: true # Enable caching of Go modules to speed up subsequent runs
 
-      # Step 3: Install golangci-lint (if you use it)
-      # golangci-lint is a popular Go linters aggregator.
-      # It's good practice to run this before tests.
       - name: Run golangci-lint
         uses: golangci/golangci-lint-action@v8
         with:
-          # Optional: version of golangci-lint to use in form of v1.2.3 or `latest` to use the latest version
-          version: v2.1.5 # Or your preferred version
-          # Optional: working directory, useful for monorepos
-          # working-directory: cmd/cvms # If your main package is in a subdirectory
-          args: --timeout=5m # Example: Add a timeout
+          version: v2.1.5
+          args: --timeout=5m
 
       # TODO: Ignore this step for now
       # Step 4: Run Go Tests
-      # This command runs all tests in your project.
-      # The -v flag gives verbose output.
-      # ./... means run tests in all subdirectories.
       # - name: Run Go Tests
       #   run: go test -v ./...
 
-      # Step 5: Build the Go application
-      # This ensures your application compiles correctly.
-      # You might want to specify the output binary name if needed,
-      # but for CI, just ensuring it builds is often enough.
-      - name: Build Go Application
-        run:
-          go build -v ./... # Or specify your main package, e.g., go build -v ./cmd/cvms
-          # If your main.go is in the root, `go build -v .` is fine.
+      - name: Build Go Application (Verification)
+        run: go build -v ./... # 코드 컴파일 가능성 검증
+
   build-and-push-docker-image:
     name: Build and Push Docker Image
     runs-on: ubuntu-latest
     needs: build-and-test # Ensures this job runs only if build-and-test succeeds
 
-    # This job will only run for pushes (not PRs) to 'develop', 'feature/golang-ci', or tags.
+    # This job will only run for pushes (not PRs) to 'develop', 'release', or tags.
     if: |
       github.event_name == 'push' &&
       (
         github.ref == 'refs/heads/develop' ||
-        startsWith(github.ref, 'refs/heads/feature/') || 
+        github.ref == 'refs/heads/release' ||
         startsWith(github.ref, 'refs/tags/v')
       )
 
@@ -79,27 +60,42 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
         # If you use git tags for versioning in Docker tags, fetch all history/tags
-        # with:
-        #   fetch-depth: 0
-
+        with:
+          fetch-depth: 0
       - name: Extract Docker metadata
         id: meta
         uses: docker/metadata-action@v5
         with:
           images: |
             ghcr.io/${{ github.repository_owner }}/cvms
-            # This will create image names like ghcr.io/your-username/cvms
-            # If github.repository_owner is 'cosmostation' and repo name should always be 'cvms'
           tags: |
-            # Creates a tag like 'develop' for the develop branch
-            # Creates a tag like 'feature-golang-ci' for the feature/golang-ci branch
-            type=ref,event=branch 
-            # Creates a tag like 'v1.0.0' for git tags like v1.0.0
-            type=ref,event=tag
-            # Creates a tag with the short commit SHA, e.g., a1b2c3d
+            # For pushes to the 'develop' branch, tag the image as 'develop'.
+            # Enabled only when the push is to 'refs/heads/develop'.
+            type=raw,value=develop,enable=${{ github.ref == 'refs/heads/develop' }}
+
+            # For pushes to the 'release' branch, tag the image as 'release'.
+            # This can be used for release candidates or pre-releases.
+            # Enabled only when the push is to 'refs/heads/release'.
+            type=raw,value=release,enable=${{ github.ref == 'refs/heads/release' }}
+
+            # For Git tags (e.g., v1.2.3):
+            # Create a Docker tag that exactly matches the Git tag (e.g., v1.2.3).
+            type=semver,pattern={{version}}
+            # Create a Docker tag for the major and minor version (e.g., 1.2 from v1.2.3).
+            type=semver,pattern={{major}}.{{minor}}
+            # Create a Docker tag for the major version only (e.g., 1 from v1.2.3).
+            type=semver,pattern={{major}}
+
+            # Tag images built from any Git tag starting with 'v' also as 'latest'.
+            # Note: This means if you push e.g. v2.0.0-beta, it would also be tagged 'latest'.
+            # For a more sophisticated 'latest' tag pointing only to stable releases,
+            # consider using flavor options or more specific rules.
+            type=raw,value=latest,enable=${{startsWith(github.ref, 'refs/tags/v')}}
+
+            # For every push, create a Docker tag with the short commit SHA.
+            # This provides a unique, immutable tag for each build.
+            # Example: a1b2c3d
             type=sha,prefix=,suffix=,format=short
-            # Optional: For the 'develop' branch, you might also want a 'latest' tag
-            # type=raw,value=latest,enable=${{ github.ref == 'refs/heads/develop' }}
 
       - name: Set up QEMU (for multi-platform builds, optional)
         uses: docker/setup-qemu-action@v3
@@ -111,17 +107,17 @@ jobs:
         uses: docker/login-action@v3
         with:
           registry: ghcr.io
-          username: ${{ github.actor }} # Your GitHub username or organization name
-          password: ${{ secrets.GITHUB_TOKEN }} # GitHub Actions automatically provides this token
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Build and push Docker image
         uses: docker/build-push-action@v5
         with:
-          context: . # Your Dockerfile should be in the root of your repository
-          file: ./Dockerfile # Path to your Dockerfile
-          # platforms: linux/amd64,linux/arm64 # Uncomment for multi-platform builds
-          push: true # This will push the image since the 'if' condition for the job was met
+          context: .
+          file: ./Dockerfile
+          platforms: linux/amd64,linux/arm64 # Uncomment for multi-platform builds
+          push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
-          cache-from: type=gha # Use GitHub Actions cache for Docker layers
+          cache-from: type=gha
           cache-to: type=gha,mode=max
